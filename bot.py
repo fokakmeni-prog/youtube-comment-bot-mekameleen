@@ -215,3 +215,7 @@ youtube.commentThreads().insert(
 ).execute()
 
 print("تم نشر التعليق بنجاح")
+print("الفيديو:")
+print("https://youtube.com/watch?v=" + target_video)
+print("التعليق:")
+print(target_comment)
