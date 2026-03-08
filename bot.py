@@ -154,10 +154,16 @@ videos = youtube.videos().list(
 
 video_map = {}
 
-for item in videos["items"]:
-    duration = iso_duration_to_seconds(item["contentDetails"]["duration"])
-    video_map[item["id"]] = duration
+for item in videos.get("items", []):
+    video_id = item.get("id")
+    content_details = item.get("contentDetails", {})
+    duration_text = content_details.get("duration")
 
+    if not video_id or not duration_text:
+        continue
+
+    duration = iso_duration_to_seconds(duration_text)
+    video_map[video_id] = duration
 target_video = None
 target_comment = None
 
