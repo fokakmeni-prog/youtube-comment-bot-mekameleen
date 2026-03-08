@@ -89,6 +89,7 @@ https://www.youtube.com/channel/UCHcGPyxfYfEZsjMcC4zfbgw
 
 BOT_SIGNATURE = "الرابط الرسمي:"
 
+
 def iso_duration_to_seconds(duration):
     pattern = re.compile(
         r'PT'
@@ -97,10 +98,15 @@ def iso_duration_to_seconds(duration):
         r'(?:(\d+)S)?'
     )
     match = pattern.match(duration)
+
+    if not match:
+        return 0
+
     hours = int(match.group(1) or 0)
     minutes = int(match.group(2) or 0)
     seconds = int(match.group(3) or 0)
     return hours * 3600 + minutes * 60 + seconds
+
 
 def choose_comment(duration):
     if duration < 90:
@@ -109,6 +115,7 @@ def choose_comment(duration):
         return random.choice(SHORT_VIDEO_COMMENTS)
     else:
         return random.choice(LONG_VIDEO_COMMENTS)
+
 
 def already_commented(youtube, video_id):
     comments = youtube.commentThreads().list(
@@ -119,11 +126,12 @@ def already_commented(youtube, video_id):
     ).execute()
 
     for item in comments.get("items", []):
-        text = item["snippet"]["topLevelComment"]["snippet"]["textDisplay"]
+        text = item["snippet"]["topLevelComment"]["snippet"].get("textDisplay", "")
         if BOT_SIGNATURE in text:
             return True
 
     return False
+
 
 creds = Credentials(
     None,
@@ -145,7 +153,15 @@ search = youtube.search().list(
     type="video"
 ).execute()
 
-video_ids = [item["id"]["videoId"] for item in search["items"]]
+video_ids = []
+for item in search.get("items", []):
+    video_id = item.get("id", {}).get("videoId")
+    if video_id:
+        video_ids.append(video_id)
+
+if not video_ids:
+    print("لا يوجد فيديوهات حديثة")
+    raise SystemExit(0)
 
 videos = youtube.videos().list(
     part="contentDetails",
@@ -164,10 +180,14 @@ for item in videos.get("items", []):
 
     duration = iso_duration_to_seconds(duration_text)
     video_map[video_id] = duration
+
 target_video = None
 target_comment = None
 
 for vid in video_ids:
+    if vid not in video_map:
+        continue
+
     if already_commented(youtube, vid):
         continue
 
@@ -178,7 +198,7 @@ for vid in video_ids:
 
 if not target_video:
     print("لا يوجد فيديو جديد للتعليق عليه")
-    exit()
+    raise SystemExit(0)
 
 youtube.commentThreads().insert(
     part="snippet",
